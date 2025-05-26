@@ -53,7 +53,9 @@ export class PanelVisibilityManager {
         this._staticBox = new Clutter.ActorBox();
         this._animationActive = false;
         this._shortcutTimeout = null;
-        this._dummyWindowPath = `${extensionPath}/dummy-window.js`;
+        this._dummyWindowPath = `${extensionPath}/dummyWindow.js`;
+        this._workspaceChangedSignalId = null;
+        this._monitorsChangedSignalId = null;
 
         this._desktopIconsUsableArea = (
             new DesktopIconsIntegration.DesktopIconsUsableAreaClass()
@@ -193,8 +195,25 @@ export class PanelVisibilityManager {
     _watchDummyApp() {
         if (!Meta.is_wayland_compositor()) return;
 
-        global.workspace_manager.connect('active-workspace-changed', () => {
+        DEBUG("Watching dummy app for workspace and monitor changes");
+
+        if (this._workspaceChangedSignalId) {
+            global.workspace_manager.disconnect(this._workspaceChangedSignalId);
+            this._workspaceChangedSignalId = null;
+        }
+        if (this._monitorsChangedSignalId) {
+            global.display.disconnect(this._monitorsChangedSignalId);
+            this._monitorsChangedSignalId = null;
+        }
+
+        this._workspaceChangedSignalId = global.workspace_manager.connect('active-workspace-changed', () => {
             DEBUG('Workspace changed, respawning dummy app');
+            this._disposeDummyApp();
+            this._spawnDummyApp();
+        });
+
+        this._monitorsChangedSignalId = global.display.connect('monitors-changed', () => {
+            DEBUG('Monitors changed, respawning dummy app');
             this._disposeDummyApp();
             this._spawnDummyApp();
         });
