@@ -1,6 +1,14 @@
 imports.gi.versions.Gtk = "3.0";
 const { Gtk, Gdk } = imports.gi;
 
+/**
+ * On Wayland, making the panel visible is not enough,
+ * there is some weird issue that causes the panel to stay invisible,
+ * even though it becomes clickable. As a workaround, on Wayland a concealed dumb
+ * app with invisible window (always on top) is started. That makes the panel visible.
+ * 
+ * Credit: github.com/marcinjahn/gnome-peek-top-bar-on-fullscreen-extension
+ */
 class DummyWindow {
   constructor() {
     this.dummyApp = this.createApp();
