@@ -54,8 +54,6 @@ export class PanelVisibilityManager {
         this._animationActive = false;
         this._shortcutTimeout = null;
         this._dummyWindowPath = `${extensionPath}/dummyWindow.js`;
-        this._workspaceChangedSignalId = null;
-        this._monitorsChangedSignalId = null;
 
         this._desktopIconsUsableArea = (
             new DesktopIconsIntegration.DesktopIconsUsableAreaClass()
@@ -95,7 +93,6 @@ export class PanelVisibilityManager {
         );
 
         this._spawnDummyApp();
-        this._watchDummyApp();
     }
     
     hide(animationTime, trigger) {
@@ -190,33 +187,15 @@ export class PanelVisibilityManager {
      * NOTE: On GNOME/Wayland, windows (including the dummy window) only appear on the current workspace. 
      * Wayland does not support "sticky" windows (windows that appear on all workspaces) natively, 
      * and GNOME does not expose an API to make a window sticky across all workspaces. 
-     * To fix this, we respawn the dummy app whenever the active workspace changes.
+     * To fix this, we respawn the dummy app whenever the active workspace changes or display changes.
      */
-    _watchDummyApp() {
+    _reloadDummyApp() {
         if (!Meta.is_wayland_compositor()) return;
 
-        DEBUG("Watching dummy app for workspace and monitor changes");
+        DEBUG(`_reloadDummyApp() - ${this._dummyWindowPath}`);
 
-        if (this._workspaceChangedSignalId) {
-            global.workspace_manager.disconnect(this._workspaceChangedSignalId);
-            this._workspaceChangedSignalId = null;
-        }
-        if (this._monitorsChangedSignalId) {
-            global.display.disconnect(this._monitorsChangedSignalId);
-            this._monitorsChangedSignalId = null;
-        }
-
-        this._workspaceChangedSignalId = global.workspace_manager.connect('active-workspace-changed', () => {
-            DEBUG('Workspace changed, respawning dummy app');
-            this._disposeDummyApp();
-            this._spawnDummyApp();
-        });
-
-        this._monitorsChangedSignalId = global.display.connect('monitors-changed', () => {
-            DEBUG('Monitors changed, respawning dummy app');
-            this._disposeDummyApp();
-            this._spawnDummyApp();
-        });
+        this._disposeDummyApp();
+        this._spawnDummyApp();
     }
 
     _spawnDummyApp() {
@@ -512,15 +491,25 @@ export class PanelVisibilityManager {
                 Main.layoutManager,
                 'monitors-changed',
                 () => {
+                    DEBUG('Monitors changed');
                     this._base_y = PanelBox.y;
                     this._updateStaticBox();
                     this._updateSettingsMouseSensitive();
+                    this._reloadDummyApp();
                 }
             ],
             [
                 this._intellihide,
                 'status-changed',
                 this._updatePreventHide.bind(this)
+            ],
+            [
+                global.workspace_manager,
+                'active-workspace-changed',
+                () => {
+                    DEBUG('Active workspace changed');
+                    this._reloadDummyApp();
+                }
             ]
         );
 
