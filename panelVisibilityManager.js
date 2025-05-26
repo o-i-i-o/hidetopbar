@@ -43,7 +43,7 @@ const _searchEntryBin = Main.overview._overview._controls._searchEntryBin;
 
 export class PanelVisibilityManager {
 
-    constructor(settings, monitorIndex) {
+    constructor(settings, monitorIndex, extensionPath) {
         this._monitorIndex = monitorIndex;
         this._base_y = PanelBox.y;
         this._settings = settings;
@@ -53,6 +53,7 @@ export class PanelVisibilityManager {
         this._staticBox = new Clutter.ActorBox();
         this._animationActive = false;
         this._shortcutTimeout = null;
+        this._dummyWindowPath = `${extensionPath}/dummy-window.js`;
 
         this._desktopIconsUsableArea = (
             new DesktopIconsIntegration.DesktopIconsUsableAreaClass()
@@ -90,8 +91,10 @@ export class PanelVisibilityManager {
         this._bindTimeoutId = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT, 100, this._bindUIChanges.bind(this),
         );
-    }
 
+        this._spawnDummyApp();
+    }
+    
     hide(animationTime, trigger) {
         DEBUG("hide(" + trigger + ")");
         if(this._preventHide) return;
@@ -158,7 +161,7 @@ export class PanelVisibilityManager {
                 onComplete: () => {
                     this._animationActive = false;
                     this._updateStaticBox();
-
+                    
                     const mouse = global.get_pointer();
 
                     if(!this._isHovering(...mouse))
@@ -178,6 +181,22 @@ export class PanelVisibilityManager {
                 }
             });
         }
+    }
+
+    _spawnDummyApp() {
+        if (!Meta.is_wayland_compositor()) return;
+
+        DEBUG(`_spawnDummyApp() - ${this._dummyWindowPath}`);
+        GLib.spawn_command_line_async(
+            `sh -c "GDK_BACKEND=x11 gjs ${this._dummyWindowPath}"`
+        );
+    }
+
+    _disposeDummyApp() {
+        if (!Meta.is_wayland_compositor()) return;
+
+        DEBUG(`_disposeDummyApp() - ${this._dummyWindowPath}`);
+        GLib.spawn_command_line_async(`pkill -f "${this._dummyWindowPath}"`);
     }
 
     _isHovering(x, y) {
@@ -553,5 +572,7 @@ export class PanelVisibilityManager {
         });
         this._desktopIconsUsableArea.destroy();
         this._desktopIconsUsableArea = null;
+
+        this._disposeDummyApp();
     }
 };
