@@ -93,6 +93,7 @@ export class PanelVisibilityManager {
         );
 
         this._spawnDummyApp();
+        this._watchDummyApp();
     }
     
     hide(animationTime, trigger) {
@@ -181,6 +182,16 @@ export class PanelVisibilityManager {
                 }
             });
         }
+    }
+
+    _watchDummyApp() {
+        if (!Meta.is_wayland_compositor()) return;
+
+        global.workspace_manager.connect('active-workspace-changed', () => {
+            DEBUG('Workspace changed, respawning dummy app');
+            this._disposeDummyApp();
+            this._spawnDummyApp();
+        });
     }
 
     _spawnDummyApp() {
