@@ -184,6 +184,12 @@ export class PanelVisibilityManager {
         }
     }
 
+    /** 
+     * NOTE: On GNOME/Wayland, windows (including the dummy window) only appear on the current workspace. 
+     * Wayland does not support "sticky" windows (windows that appear on all workspaces) natively, 
+     * and GNOME does not expose an API to make a window sticky across all workspaces. 
+     * To fix this, we respawn the dummy app whenever the active workspace changes.
+     */
     _watchDummyApp() {
         if (!Meta.is_wayland_compositor()) return;
 
