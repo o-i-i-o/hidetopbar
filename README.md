@@ -1,4 +1,4 @@
-About Hide Top Bar
+About Hide Top Bar   [中文文档](README_zh.md)
 ------------------
 
 This GNOME extension helps to hide GNOME's top bar when it gets into your way.
